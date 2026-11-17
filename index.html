@@ -102,6 +102,51 @@
 #albumes .album-art {min-height:0;padding:0;background:transparent;overflow:hidden;box-shadow:0 12px 34px rgba(0,0,0,.10)}
 #albumes .album-art img {display:block;width:100%;height:auto;aspect-ratio: 3 / 2;object-fit:cover}
 #albumes .btn {text-align:center}
+</style><style>
+/* CORRECCIÓN: tarjetas de galería independientes del estilo antiguo de mosaico */
+#galeria .gallery-scroll{
+  display:flex!important; width:100%; max-width:100%; box-sizing:border-box;
+  gap:14px; overflow-x:auto; overflow-y:hidden; padding:9px 2px 17px;
+  scroll-snap-type:x mandatory; scroll-padding-inline:2px;
+  -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+  scrollbar-width:thin; scrollbar-color:#f83eb1 #292929;
+}
+#galeria .gallery-scroll > .gallery-slide{
+  appearance:none; -webkit-appearance:none; box-sizing:border-box;
+  display:block!important; position:relative; overflow:hidden; padding:0!important;
+  border:0!important; border-radius:17px!important; background:#282128!important;
+  flex:0 0 270px!important; width:270px!important; height:365px!important;
+  min-width:0!important; max-width:270px!important; max-height:none!important;
+  aspect-ratio:auto!important; grid-column:auto!important;
+  scroll-snap-align:start; cursor:zoom-in; line-height:0;
+}
+#galeria .gallery-scroll > .gallery-slide > img{
+  display:block!important; width:100%!important; height:100%!important;
+  min-width:0; max-width:100%; object-fit:cover!important; object-position:center;
+  border:0; border-radius:0; margin:0; padding:0;
+}
+#galeria .gallery-scroll > .gallery-slide .gallery-magnify{
+  position:absolute; bottom:10px;right:10px; width:35px;height:35px;
+  display:grid;place-items:center;line-height:1;
+  border-radius:50%; background:#f83eb1;color:#111;font-size:18px;
+}
+#galeria .gallery-slide-arrow{color:#fff!important;border-color:#999!important;background:#262126!important}
+#galeria .gallery-slide-arrow:hover{background:#f83eb1!important;color:#111!important}
+#galeria .gallery-swipe-label{color:#ccc!important}
+@media(max-width:760px){
+  #galeria .gallery-slider-controls{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  #galeria .gallery-swipe-label{font-size:12px;line-height:1.3;max-width:54%}
+  #galeria .gallery-slide-buttons{flex-shrink:0;gap:7px}
+  #galeria .gallery-slide-arrow{width:38px;height:38px;font-size:23px}
+  #galeria .gallery-scroll{margin:8px -24px 0 0; width:calc(100% + 24px); max-width:none; padding-right:24px; gap:12px}
+  #galeria .gallery-scroll > .gallery-slide{
+     flex:0 0 min(76vw,290px)!important;
+     width:min(76vw,290px)!important;
+     max-width:min(76vw,290px)!important;
+     height:clamp(290px,100vw,385px)!important;
+  }
+}
+@media(max-width:380px){#galeria .gallery-scroll > .gallery-slide{height:340px!important}}
 </style></head>
 <body>
 <noscript><div class="nojs">La cuenta regresiva requiere JavaScript. Consulta el precio vigente por WhatsApp.</div></noscript>
@@ -135,17 +180,18 @@ const end=Date.parse('2026-12-11T00:00:00-04:00');
 const pad=n=>String(n).padStart(2,'0');
 const cards=[...document.querySelectorAll('.price-card[data-pack]')];
 const couponCode='PASITODEAMOR';
-let applied=false;
+const appliedByPack = new Set();
 let lastExpired=null;
 function expiredNow(){return Date.now()>=end;}
-function setStatus(message){
-  document.querySelectorAll('.coupon-status').forEach(el=>el.textContent=message);
+function setStatus(card,message){
+  const status=card?.querySelector('.coupon-status');
+  if(status)status.textContent=message;
 }
 function render(){
  const expired=expiredNow();
- const discount=applied&&!expired;
  cards.forEach(card=>{
   const base=card.dataset.pack;
+  const discount=appliedByPack.has(base)&&!expired;
   const regularPrice=base==='10'?'70':'100';
   const promoPrice=base==='10'?'50':'70';
   const price=discount?'50':(expired?regularPrice:promoPrice);
@@ -173,8 +219,7 @@ function render(){
   input.disabled=expired;
   apply.disabled=expired;
   input.placeholder=expired?'Promoción finalizada':'Ingresa tu código';
-  if(discount){input.value=couponCode;apply.textContent='APLICADO';}
-  else{apply.textContent='APLICAR';}
+  apply.textContent=discount?'APLICADO':'APLICAR';
  });
  const contactMsg='Hola, Mamut Studio. Quiero información sobre las sesiones de fotografías navideñas y sus fechas disponibles.';
  document.querySelectorAll('.contact-link').forEach(a=>a.href='https://wa.me/584245879110?text='+encodeURIComponent(contactMsg));
@@ -183,8 +228,8 @@ function render(){
  ? 'Tarifas regulares vigentes desde el 11 de diciembre de 2026: 10 fotografías REF 70 y 20 fotografías REF 100. Consulta disponibilidad por WhatsApp.'
  : 'Precios promocionales y código PASITODEAMOR válidos hasta el 10 de diciembre de 2026, a las 11:59 p. m. (hora de Venezuela). Después se aplican las tarifas regulares. Pagos en divisas.';
  if(expired && lastExpired!==true){
-  applied=false;
-  setStatus('La promoción y el código vencieron el 10 de diciembre.');
+  appliedByPack.clear();
+  cards.forEach(card=>setStatus(card,'La promoción y el código vencieron el 10 de diciembre.'));
  }
  lastExpired=expired;
 }
@@ -200,11 +245,14 @@ render();tick();setInterval(tick,1000);
 document.querySelectorAll('.coupon-form').forEach(form=>{
  form.addEventListener('submit',event=>{
   event.preventDefault();
-  if(expiredNow()){setStatus('Este código venció el 10 de diciembre.');render();return;}
+  const card=form.closest('.price-card[data-pack]');
+  if(!card)return;
+  const base=card.dataset.pack;
+  if(expiredNow()){setStatus(card,'Este código venció el 10 de diciembre.');render();return;}
   const code=form.querySelector('.coupon-input').value.trim().toUpperCase().replace(/\s+/g,'');
-  if(code!==couponCode){setStatus('Código no válido. Revisa cómo lo escribiste e inténtalo otra vez.');return;}
-  applied=true;
-  setStatus('¡Código PASITODEAMOR aplicado en los dos paquetes!');
+  if(code!==couponCode){setStatus(card,'Código no válido. Revisa cómo lo escribiste e inténtalo otra vez.');return;}
+  appliedByPack.add(base);
+  setStatus(card,base==='10'?'¡Código aplicado solo aquí! Recibes 10 fotografías extra gratis.':'¡Código aplicado solo aquí! Ahorras REF 20.');
   render();
  });
 });
@@ -213,7 +261,7 @@ document.querySelectorAll('a[href*="wa.me/584245879110"]').forEach(link=>{
  link.addEventListener('click',function(){
   if(typeof fbq!=='function')return;
   const base=link.closest('[data-pack]')?.dataset.pack||'general';
-  const codeApplied=applied&&!expiredNow();
+  const codeApplied=appliedByPack.has(base)&&!expiredNow();
   const params={content_name:'Fotografia navidena 2026',content_category:'fotografia_navidad_2026',package_photos:codeApplied?'20':base,lead_type:'whatsapp_click',coupon_code:codeApplied?'PASITODEAMOR':'none'};
   fbq('track','Contact',params);
   fbq('track','Lead',params);
