@@ -1,0 +1,7 @@
+MAMUT STUDIO - LANDING NAVIDAD 2026
+
+Sube TODOS los archivos a la raiz del repositorio GitHub mamut-navidad (sin subcarpetas).
+Incluye index.html, 10 fotos WebP, album-navidad.webp y video-promocion.mp4.
+El video esta convertido a H.264 para navegadores y NO se reproduce automaticamente.
+El boton de albumes dirige a https://pingu-books.vercel.app/
+El pixel de Meta se mantiene. Comprueba eventos tras publicar.
